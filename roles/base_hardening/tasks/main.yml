@@ -1,0 +1,260 @@
+---
+# ────────────────────────────────────────────────────────────────────────
+# Base server hardening for Debian 13
+# ────────────────────────────────────────────────────────────────────────
+# This role:
+#   1. Updates all packages
+#   2. Installs baseline security/utility packages
+#   3. Creates a deployer user with sudo + SSH key
+#   4. Locks down SSH (key-only, non-standard port, disables root login)
+#   5. Configures UFW firewall
+#   6. Installs and configures fail2ban
+#   7. Hardens kernel parameters via sysctl
+#   8. Enables automatic security updates
+#   9. Sets timezone and NTP
+# ────────────────────────────────────────────────────────────────────────
+
+# ── 1. Update apt cache and upgrade all packages ──────────────────────────
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Dist-upgrade all packages
+  ansible.builtin.apt:
+    upgrade: dist
+
+# ── 2. Install baseline packages ──────────────────────────────────────────
+- name: Install baseline security and utility packages
+  ansible.builtin.apt:
+    name: "{{ baseline_packages }}"
+    state: present
+
+# ── 3. Create deployer user with sudo access ─────────────────────────────
+- name: Create deployer group
+  ansible.builtin.group:
+    name: "{{ deployer_username }}"
+    state: present
+
+- name: Create deployer user
+  ansible.builtin.user:
+    name: "{{ deployer_username }}"
+    group: "{{ deployer_username }}"
+    groups: sudo
+    shell: /bin/bash
+    password: "{{ deployer_password_hash }}"
+    create_home: true
+
+- name: Ensure /etc/sudoers.d directory exists
+  ansible.builtin.file:
+    path: /etc/sudoers.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Add sudo entry for deployer (passwordless)
+  ansible.builtin.copy:
+    dest: "/etc/sudoers.d/{{ deployer_username }}"
+    content: "{{ deployer_username }} ALL=(ALL) NOPASSWD:ALL\n"
+    owner: root
+    group: root
+    mode: "0440"
+  tags: sudo
+
+- name: Ensure .ssh directory exists for deployer
+  ansible.builtin.file:
+    path: "/home/{{ deployer_username }}/.ssh"
+    state: directory
+    owner: "{{ deployer_username }}"
+    group: "{{ deployer_username }}"
+    mode: "0700"
+
+- name: Install deployer SSH public key
+  ansible.posix.authorized_key:
+    user: "{{ deployer_username }}"
+    key: "{{ deployer_ssh_public_key }}"
+    state: present
+
+# ── 4. Harden SSH daemon ──────────────────────────────────────────────────
+- name: Deploy hardened sshd_config
+  ansible.builtin.template:
+    src: sshd_config.j2
+    dest: /etc/ssh/sshd_config
+    owner: root
+    group: root
+    mode: "0644"
+    validate: /usr/sbin/sshd -t -f %s
+  notify: Restart sshd
+
+- name: Remove sshd_config.d drop-ins that could override our settings
+  ansible.builtin.file:
+    path: /etc/ssh/sshd_config.d
+    state: absent
+  notify: Restart sshd
+
+- name: Ensure sshd_config.d directory exists
+  ansible.builtin.file:
+    path: /etc/ssh/sshd_config.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Deploy remaining sshd drop-in (the SSH hardening)
+  ansible.builtin.copy:
+    dest: /etc/ssh/sshd_config.d/99-hardening.conf
+    content: |
+      Port {{ ssh_port }}
+      PermitRootLogin no
+      PasswordAuthentication no
+      KbdInteractiveAuthentication no
+      PubkeyAuthentication yes
+      AuthorizedKeysFile .ssh/authorized_keys
+      PermitEmptyPasswords no
+      ChallengeResponseAuthentication no
+      UsePAM yes
+      X11Forwarding no
+      AllowTcpForwarding no
+      AllowAgentForwarding no
+      PrintMotd no
+      ClientAliveInterval 300
+      ClientAliveCountMax 2
+      LoginGraceTime 30
+      MaxAuthTries 3
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart sshd
+
+# ── 5. Configure UFW firewall ─────────────────────────────────────────────
+- name: Reset UFW
+  community.general.ufw:
+    state: reset
+  changed_when: false
+
+- name: Set UFW default deny incoming
+  community.general.ufw:
+    direction: incoming
+    policy: deny
+  notify: Restart ufw
+
+- name: Set UFW default allow outgoing
+  community.general.ufw:
+    direction: outgoing
+    policy: allow
+  notify: Restart ufw
+
+- name: Allow SSH on custom port
+  community.general.ufw:
+    rule: allow
+    port: "{{ ssh_port | string }}"
+    proto: tcp
+    src: "{{ item }}"
+  loop: "{{ allowed_ssh_networks }}"
+
+- name: Allow HTTP (80) for Let's Encrypt / initial cert
+  community.general.ufw:
+    rule: allow
+    port: "80"
+    proto: tcp
+
+- name: Allow HTTPS (443) for Matrix client/federation
+  community.general.ufw:
+    rule: allow
+    port: "443"
+    proto: tcp
+
+- name: Allow Matrix federation port 8448
+  community.general.ufw:
+    rule: allow
+    port: "8448"
+    proto: tcp
+
+- name: Enable UFW
+  community.general.ufw:
+    state: enabled
+
+# ── 6. Install and configure fail2ban ─────────────────────────────────────
+- name: Deploy fail2ban jail.local
+  ansible.builtin.template:
+    src: jail.local.j2
+    dest: /etc/fail2ban/jail.local
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart fail2ban
+
+- name: Enable and start fail2ban
+  ansible.builtin.service:
+    name: fail2ban
+    state: started
+    enabled: true
+
+# ── 7. Kernel hardening via sysctl ────────────────────────────────────────
+- name: Deploy sysctl hardening config
+  ansible.builtin.template:
+    src: sysctl-hardening.conf.j2
+    dest: /etc/sysctl.d/99-hardening.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload sysctl
+
+- name: Apply sysctl settings immediately
+  ansible.builtin.command: sysctl --system
+  changed_when: false
+  failed_when: false
+
+# ── 8. Enable automatic security updates ───────────────────────────────────
+- name: Deploy unattended-upgrades config
+  ansible.builtin.template:
+    src: 50unattended-upgrades.j2
+    dest: /etc/apt/apt.conf.d/50unattended-upgrades
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Deploy auto-upgrades config
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+      APT::Periodic::AutocleanInterval "7";
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Enable and start unattended-upgrades timer
+  ansible.builtin.service:
+    name: unattended-upgrades
+    state: started
+    enabled: true
+  failed_when: false
+
+# ── 9. Set timezone ──────────────────────────────────────────────────────
+- name: Set timezone
+  community.general.timezone:
+    name: "{{ timezone }}"
+  notify: Restart cron
+  failed_when: false
+
+- name: Enable and start chrony for NTP
+  ansible.builtin.service:
+    name: chronyd                    # Debian 13 uses chrony as default NTP daemon
+    state: started
+    enabled: true
+  failed_when: false
+
+# ── 10. Lock down root account ────────────────────────────────────────────
+- name: Lock root password (no console login)
+  ansible.builtin.user:
+    name: root
+    password_lock: true
+  tags: lock-root
+
+- name: Set hostname
+  ansible.builtin.hostname:
+    name: "{{ matrix_domain }}"
+  failed_when: false

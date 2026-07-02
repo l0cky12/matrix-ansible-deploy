@@ -1,0 +1,38 @@
+---
+# Default variables for matrix-synapse role
+
+matrix_domain: matrix.example.com
+matrix_server_name: example.com
+matrix_admin_user: "@admin:example.com"
+
+# ── Database ─────────────────────────────────────────────────────────────
+matrix_db_name: synapse
+matrix_db_user: synapse
+matrix_db_password: "CHANGE_ME"
+
+# ── Synapse config ────────────────────────────────────────────────────────
+matrix_data_dir: /var/lib/matrix-synapse
+matrix_config_dir: /etc/matrix-synapse
+matrix_signing_key_path: "/etc/matrix-synapse/{{ matrix_domain }}.signing.key"
+max_upload_size: "50M"
+max_image_pixels: "32M"
+
+# ── Ports ─────────────────────────────────────────────────────────────────
+synapse_http_port: 8008        # Internal HTTP listener (nginx proxies to this)
+synapse_replication_port: 9090 # Worker replication (optional, unused for small installs)
+synapse_manhole_enabled: false
+
+# ── Federation ────────────────────────────────────────────────────────────
+federation_domain_whitelist: []  # Empty = open federation
+
+# ── Registration ──────────────────────────────────────────────────────────
+enable_registration: false
+registration_shared_secret: ""  # CHANGE — generate a long random hex string
+
+# ── Message retention ────────────────────────────────────────────────────
+message_retention_enabled: false
+message_retention_max_lifetime: "1y"
+
+# ── Synapse version ──────────────────────────────────────────────────────
+# Debian 13 ships synapse; pin to keep updates predictable
+synapse_pkg_name: matrix-synapse

@@ -1,0 +1,37 @@
+---
+# ────────────────────────────────────────────────────────────────────────
+#  Matrix Synapse deployment on Debian 13 with full hardening
+# ────────────────────────────────────────────────────────────────────────
+#  Usage:
+#    ansible-playbook site.yml
+#
+#  Dry run (no changes, just check):
+#    ansible-playbook site.yml --check
+#
+#  Run with vault-encrypted vars:
+#    ansible-playbook site.yml --vault-password-file ~/.vault_pass
+# ────────────────────────────────────────────────────────────────────────
+
+- name: Harden the base server (SSH, firewall, kernel, auto-updates)
+  hosts: all
+  become: true
+  gather_facts: true
+  roles:
+    - role: base_hardening
+      tags: [hardening, ssh, firewall, security]
+
+- name: Install and configure Matrix Synapse
+  hosts: all
+  become: true
+  gather_facts: true
+  roles:
+    - role: matrix_synapse
+      tags: [matrix, synapse, database]
+
+- name: Configure nginx reverse proxy with TLS
+  hosts: all
+  become: true
+  gather_facts: true
+  roles:
+    - role: nginx_reverse_proxy
+      tags: [nginx, tls, proxy]

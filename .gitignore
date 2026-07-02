@@ -1,0 +1,16 @@
+# Sensitive
+group_vars/vault.yml
+*.vault
+.vault_pass
+*.pem
+*.key
+
+# Ansible
+*.retry
+*.log
+__pycache__/
+.cache/
+
+# Local testing
+tests/*.log
+.vagrant/

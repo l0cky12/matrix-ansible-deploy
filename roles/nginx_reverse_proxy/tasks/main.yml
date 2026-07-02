@@ -1,0 +1,166 @@
+---
+# ────────────────────────────────────────────────────────────────────────
+# nginx reverse proxy with TLS via Let's Encrypt for Matrix Synapse
+# ────────────────────────────────────────────────────────────────────────
+# This role:
+#   1. Installs nginx and certbot
+#   2. Generates a strong Diffie-Hellman group (2048-bit)
+#   3. Obtains a Let's Encrypt certificate
+#   4. Configures nginx as a reverse proxy in front of Synapse
+#   5. Serves the .well-known matrix delegation file
+# ────────────────────────────────────────────────────────────────────────
+
+# ── 1. Install nginx and certbot ──────────────────────────────────────────
+- name: Install nginx and certbot
+  ansible.builtin.apt:
+    name:
+      - nginx
+      - certbot
+      - python3-certbot-nginx
+    state: present
+
+# ── 2. Generate Diffie-Hellman parameters ──────────────────────────────────
+- name: Ensure DH parameters directory exists
+  ansible.builtin.file:
+    path: /etc/nginx/dh
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Generate DH parameters (2048-bit)
+  ansible.builtin.command: openssl dhparam -out /etc/nginx/dh/dhparam.pem 2048
+  args:
+    creates: /etc/nginx/dh/dhparam.pem
+  notify: Reload nginx
+
+# ── 3. Create ACME challenge webroot ──────────────────────────────────────
+- name: Create ACME challenge webroot directory
+  ansible.builtin.file:
+    path: /var/www/letsencrypt
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+# ── 4. Deploy initial nginx config (HTTP-only, for certbot challenge) ────
+# We need nginx running on port 80 first so certbot can verify the domain
+- name: Deploy temporary HTTP-only nginx config for certbot
+  ansible.builtin.template:
+    src: nginx-http-only.conf.j2
+    dest: /etc/nginx/sites-available/{{ matrix_homeserver_name }}
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload nginx
+
+- name: Enable site
+  ansible.builtin.file:
+    src: /etc/nginx/sites-available/{{ matrix_homeserver_name }}
+    dest: /etc/nginx/sites-enabled/{{ matrix_homeserver_name }}
+    state: link
+  notify: Reload nginx
+
+- name: Remove default nginx site
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify: Reload nginx
+
+- name: Flush handlers to apply nginx config before certbot runs
+  ansible.builtin.meta: flush_handlers
+
+- name: Ensure nginx is running
+  ansible.builtin.service:
+    name: nginx
+    state: started
+    enabled: true
+
+# ── 5. Obtain Let's Encrypt certificate ───────────────────────────────────
+- name: Obtain Let's Encrypt certificate
+  ansible.builtin.command: >
+    certbot certonly --webroot
+    --webroot-path /var/www/letsencrypt
+    --email {{ letsencrypt_email }}
+    --non-interactive
+    --agree-tos
+    --no-eff-email
+    -d {{ matrix_homeserver_name }}
+  args:
+    creates: /etc/letsencrypt/live/{{ matrix_homeserver_name }}/fullchain.pem
+  register: certbot_result
+
+- name: Debug certbot result
+  ansible.builtin.debug:
+    var: certbot_result
+  when: certbot_result is changed
+  tags: ['skip_ansible_lint']
+
+# ── 6. Deploy full nginx config (HTTP→HTTPS redirect + reverse proxy) ─────
+- name: Deploy production nginx config with TLS
+  ansible.builtin.template:
+    src: nginx-matrix.conf.j2
+    dest: /etc/nginx/sites-available/{{ matrix_homeserver_name }}
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload nginx
+
+- name: Flush handlers before testing
+  ansible.builtin.meta: flush_handlers
+
+# ── 7. Test and reload nginx ──────────────────────────────────────────────
+- name: Test nginx configuration
+  ansible.builtin.command: nginx -t
+  changed_when: false
+
+# ── 8. Set up auto-renewal ────────────────────────────────────────────────
+- name: Deploy certbot renewal systemd timer override
+  ansible.builtin.copy:
+    dest: /etc/cron.d/certbot-renewal
+    content: |
+      # Managed by Ansible — renew Let's Encrypt certs twice daily
+      0 3,15 * * * root certbot renew --quiet --deploy-hook "systemctl reload nginx"
+    owner: root
+    group: root
+    mode: "0644"
+
+# ── 9. Deploy .well-known delegation ─────────────────────────────────────
+- name: Ensure .well-known/matrix directory exists
+  ansible.builtin.file:
+    path: /var/www/letsencrypt/.well-known/matrix
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Deploy .well-known matrix client delegation
+  ansible.builtin.copy:
+    dest: /var/www/letsencrypt/.well-known/matrix/client
+    content: |
+      {
+        "m.homeserver": {
+          "base_url": "https://{{ matrix_homeserver_name }}"
+        }
+      }
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Deploy .well-known matrix server delegation
+  ansible.builtin.copy:
+    dest: /var/www/letsencrypt/.well-known/matrix/server
+    content: |
+      {
+        "m.server": "{{ matrix_homeserver_name }}:443"
+      }
+    owner: root
+    group: root
+    mode: "0644"
+
+# ── 10. Reload nginx to apply final config ────────────────────────────────
+- name: Ensure nginx is running and enabled
+  ansible.builtin.service:
+    name: nginx
+    state: reloaded
+    enabled: true

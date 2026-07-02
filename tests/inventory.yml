@@ -1,0 +1,10 @@
+---
+# Local test inventory — targets a Docker container
+all:
+  hosts:
+    matrix-test:
+      ansible_host: localhost
+      ansible_port: 2222
+      ansible_user: root
+      ansible_connection: docker
+      ansible_python_interpreter: /usr/bin/python3

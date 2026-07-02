@@ -1,0 +1,26 @@
+// Managed by Ansible — automatic security upgrades
+// Only applies to security origins; regular updates need manual review to
+// avoid breaking Matrix/Postgres mid-session.
+
+Unattended-Upgrade::Allowed-Origins {
+    "${distro_id}:${distro_codename}";
+    "${distro_id}:${distro_codename}-security";
+    "${distro_id} ${distro_codename}-updates";
+};
+
+// Packages that should NOT be auto-upgraded
+Unattended-Upgrade::Package-Blacklist {
+    "matrix-synapse";
+    "nginx";
+    "postgresql";
+};
+
+// Auto-reboot if needed (e.g., kernel security update)
+Unattended-Upgrade::Automatic-Reboot "false";
+Unattended-Upgrade::Automatic-Reboot-Time "04:00";
+
+// Email notification (uncomment and configure if wanted)
+// Unattended-Upgrade::Mail "admin@{{ matrix_domain }}";
+
+Unattended-Upgrade::Remove-Unused-Dependencies "true";
+Unattended-Upgrade::Remove-New-Kernel "false";

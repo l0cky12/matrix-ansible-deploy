@@ -1,0 +1,207 @@
+---
+# ────────────────────────────────────────────────────────────────────────
+# Matrix Synapse installation and configuration
+# ────────────────────────────────────────────────────────────────────────
+# Installs Synapse from Debian 13 packages, configures PostgreSQL backend,
+# generates signing key, and drops a production-ready homeserver.yaml.
+# Runs Synapse as a systemd service behind the nginx reverse proxy.
+# ────────────────────────────────────────────────────────────────────────
+
+# ── 1. Install PostgreSQL and Synapse packages ───────────────────────────
+- name: Install PostgreSQL
+  ansible.builtin.apt:
+    name:
+      - postgresql
+      - python3-psycopg2          # Required by community.postgresql modules
+    state: present
+
+- name: Install matrix.org APT repository key
+  ansible.builtin.get_url:
+    url: https://packages.matrix.org/debian/matrix-org-archive-keyring.gpg
+    dest: /usr/share/keyrings/matrix-org-archive-keyring.gpg
+    mode: "0644"
+
+- name: Add matrix.org APT repository
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb [signed-by=/usr/share/keyrings/matrix-org-archive-keyring.gpg]
+      https://packages.matrix.org/debian/
+      {{ ansible_distribution_release | default("trixie") }} main
+    state: present
+    update_cache: true
+
+- name: Install Matrix Synapse
+  ansible.builtin.apt:
+    name: matrix-synapse
+    state: present
+
+# ── 2. Create database and user ──────────────────────────────────────────
+- name: Ensure PostgreSQL is running
+  ansible.builtin.service:
+    name: postgresql
+    state: started
+    enabled: true
+
+- name: Create Synapse database
+  community.postgresql.postgresql_db:
+    name: "{{ matrix_db_name }}"
+    encoding: UTF8
+    lc_collate: C
+    lc_ctype: C
+    template: template0
+  become: true
+  become_user: postgres
+
+- name: Create Synapse database user
+  community.postgresql.postgresql_user:
+    name: "{{ matrix_db_user }}"
+    password: "{{ matrix_db_password }}"
+    expires: infinity
+  become: true
+  become_user: postgres
+
+- name: Grant privileges to Synapse database user
+  community.postgresql.postgresql_privs:
+    database: "{{ matrix_db_name }}"
+    roles: "{{ matrix_db_user }}"
+    objs: ALL_IN_SCHEMA
+    privs: ALL
+  become: true
+  become_user: postgres
+
+- name: Set Synapse database owner
+  community.postgresql.postgresql_owner:
+    db: "{{ matrix_db_name }}"
+    type: database
+    new_owner: "{{ matrix_db_user }}"
+  become: true
+  become_user: postgres
+
+# ── 3. Create directories ────────────────────────────────────────────────
+- name: Create Matrix data directory
+  ansible.builtin.file:
+    path: "{{ matrix_data_dir }}"
+    state: directory
+    owner: matrix-synapse
+    group: matrix-synapse
+    mode: "0750"
+
+- name: Create Matrix config directory
+  ansible.builtin.file:
+    path: "{{ matrix_config_dir }}"
+    state: directory
+    owner: matrix-synapse
+    group: matrix-synapse
+    mode: "0750"
+
+# ── 4. Generate signing key (idempotent — only if missing) ────────────────
+- name: Check if signing key exists
+  ansible.builtin.stat:
+    path: "{{ matrix_signing_key_path }}"
+  register: signing_key_stat
+
+- name: Copy signing key generator script
+  ansible.builtin.copy:
+    src: generate_signing_key.py
+    dest: /etc/matrix-synapse/generate_signing_key.py
+    owner: matrix-synapse
+    group: matrix-synapse
+    mode: "0755"
+
+- name: Generate Synapse signing key
+  ansible.builtin.command: python3 /etc/matrix-synapse/generate_signing_key.py
+  register: signing_key_output
+  when: not signing_key_stat.stat.exists
+  changed_when: false
+
+- name: Write signing key to disk
+  ansible.builtin.copy:
+    dest: "{{ matrix_signing_key_path }}"
+    content: "{{ signing_key_output.stdout }}\n"
+    owner: matrix-synapse
+    group: matrix-synapse
+    mode: "0640"
+  when: not signing_key_stat.stat.exists
+  no_log: true
+
+- name: Ensure signing key permissions are correct
+  ansible.builtin.file:
+    path: "{{ matrix_signing_key_path }}"
+    owner: matrix-synapse
+    group: matrix-synapse
+    mode: "0640"
+
+# ── 5. Deploy homeserver.yaml ────────────────────────────────────────────
+- name: Deploy homeserver.yaml
+  ansible.builtin.template:
+    src: homeserver.yaml.j2
+    dest: "{{ matrix_config_dir }}/homeserver.yaml"
+    owner: matrix-synapse
+    group: matrix-synapse
+    mode: "0640"
+  notify: Restart synapse
+
+- name: Deploy log config
+  ansible.builtin.template:
+    src: log.config.j2
+    dest: "{{ matrix_config_dir }}/log.config"
+    owner: matrix-synapse
+    group: matrix-synapse
+    mode: "0640"
+  notify: Restart synapse
+
+# ── 6. Deploy systemd service override ───────────────────────────────────
+- name: Ensure synapse systemd override directory exists
+  ansible.builtin.file:
+    path: /etc/systemd/system/matrix-synapse.service.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Deploy systemd override (hardening)
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/matrix-synapse.service.d/override.conf
+    content: |
+      [Service]
+      # Sandboxing
+      ProtectSystem=strict
+      ProtectHome=yes
+      PrivateTmp=yes
+      NoNewPrivileges=yes
+      ReadWritePaths={{ matrix_data_dir }} {{ matrix_config_dir }}
+      RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+      SystemCallFilter=~@privileged
+      LimitNOFILE=65535
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart synapse
+
+- name: Reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: true
+  changed_when: false
+
+# ── 7. Enable and start Synapse ───────────────────────────────────────────
+- name: Enable and start matrix-synapse
+  ansible.builtin.service:
+    name: matrix-synapse
+    state: started
+    enabled: true
+
+# ── 8. Create initial admin user (optional, run manually) ────────────────
+- name: Print admin registration command
+  ansible.builtin.debug:
+    msg: |
+      ┌──────────────────────────────────────────────────────────────────┐
+      │ To create your first admin user after deployment, SSH in and    │
+      │ run:                                                             │
+      │                                                                  │
+      │   register_new_matrix_user -a \\
+      │     -c {{ matrix_config_dir }}/homeserver.yaml \\
+      │     https://localhost:{{ synapse_http_port }}                    │
+      │                                                                  │
+      │ You will be prompted for username and password.                 │
+      └──────────────────────────────────────────────────────────────────┘
+  run_once: true

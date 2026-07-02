@@ -1,0 +1,14 @@
+---
+# Ansible-lint configuration
+# Skips var-naming[no-role-prefix] because this project shares variables
+# across roles via group_vars/all.yml — variables are intentionally global.
+skip_list:
+  - var-naming[no-role-prefix]
+  - no-handler
+
+warn_list:
+  - experimental
+
+exclude_paths:
+  - tests/
+  - .venv/

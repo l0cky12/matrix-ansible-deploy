@@ -1,0 +1,34 @@
+---
+# Default variables for base-hardening role
+# Override these in group_vars/all.yml or on the command line
+
+ssh_port: 2222
+deployer_username: liam
+deployer_password_hash: "CHANGE_ME"
+deployer_ssh_public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPLACEHOLDER liam@workstation"
+timezone: "America/Chicago"
+allowed_ssh_networks:
+  - "0.0.0.0/0"
+
+# Packages to install for baseline security + utility
+baseline_packages:
+  - ufw
+  - fail2ban
+  - unattended-upgrades
+  - apt-listchanges
+  - curl
+  - wget
+  - gnupg
+  - lsb-release
+  - ca-certificates
+  - python3
+  - python3-pip
+  - python3-venv
+  - rsync
+  - sudo
+  - openssh-server
+  - htop
+  - vim
+  - git
+  - chrony
+  - util-linux

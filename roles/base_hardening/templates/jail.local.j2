@@ -1,0 +1,45 @@
+# Managed by Ansible — fail2ban configuration
+# Protects against brute-force on SSH, nginx, and Matrix endpoints.
+
+[DEFAULT]
+# Ban duration
+bantime = 1h
+findtime = 10m
+maxretry = 5
+
+# Backend (systemd journal on Debian 13)
+backend = systemd
+
+# Email notifications (optional)
+# destemail = admin@{{ matrix_domain }}
+# sender = fail2ban@{{ matrix_domain }}
+# mta = sendmail
+# action = %(action_mwl)s
+
+# Whitelist our own networks
+ignoreip = 127.0.0.1/8 ::1 {{ allowed_ssh_networks | join(' ') }}
+
+[sshd]
+enabled = true
+port = {{ ssh_port }}
+filter = sshd
+logpath = %(sshd_log)s
+maxretry = 3
+bantime = 6h
+
+[sshrd]
+enabled = true
+port = {{ ssh_port }}
+filter = sshd
+logpath = %(sshd_log)s
+maxretry = 1
+bantime = 1d
+findtime = 1h
+
+[recidive]
+enabled = true
+filter = recidive
+logpath = /var/log/fail2ban.log
+bantime = 1w
+findtime = 1d
+maxretry = 3

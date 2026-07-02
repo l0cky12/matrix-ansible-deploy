@@ -1,0 +1,44 @@
+---
+# ──────────────────────────────────────────────────────────────────────────
+#  Global variables — edit these before running the playbook
+# ──────────────────────────────────────────────────────────────────────────
+
+# ── Identity / domain ────────────────────────────────────────────────────
+matrix_domain: matrix.example.com          # CHANGE ME — your Matrix base domain
+matrix_server_name: example.com            # CHANGE ME — the domain users see (@user:example.com)
+matrix_homeserver_name: matrix.example.com # The hostname serving the homeserver
+
+# ── Admin ────────────────────────────────────────────────────────────────
+matrix_admin_user: "@liam:example.com"     # CHANGE ME — your Matrix admin handle
+
+# ─── Your existing SSH public key ─────────────────────────────────────────
+# Paste the *content* of the public key you will use to log in.
+# Example: "ssh-ed25519 AAAAC3NzaC1... user@host"
+deployer_ssh_public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPLACEHOLDER replace-this-with-your-actual-key liam@workstation"
+
+# ── Users to keep on the system ───────────────────────────────────────────
+# The playbook creates this user, adds your SSH key, and gives passwordless sudo.
+ssh_port: 2222                             # CHANGE ME — non-default SSH port
+
+# Sudo deployer account — this is the admin user that survives hardening
+deployer_username: liam
+deployer_password_hash: "$6$rounds=656000$PLACEHOLDER$REPLACEWITHREALHASH" # CHANGE ME — generate with `openssl passwd -6`
+
+# ─── Variable User-Password (used only by the "deployer" user) ─────────────
+# If you only have a password leak available, you can pass this in via
+# --extra-vars "ansible_ssh_password=yourpass" on the first run.
+# For long-term production, switch to key-only auth and delete this line.
+# ansible_ssh_password: "CHANGE_ME"
+
+# ── Security ────────────────────────────────────────────────────────────
+timezone: "America/Chicago"
+allowed_ssh_networks:
+  - "0.0.0.0/0"   # CHANGE ME — restrict to your IP range for better security
+
+# ─── Postgres (local, for Synapse) ─────────────────────────────────────────
+matrix_db_name: synapse
+matrix_db_user: synapse
+matrix_db_password: "CHANGE_ME_strong_password_here"
+
+# ─── Oauth2 proxy / branding (future use) ────────────────────────────────
+# vpn_extension_enabled: false

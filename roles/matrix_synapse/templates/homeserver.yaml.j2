@@ -1,0 +1,155 @@
+# Managed by Ansible — Matrix Synapse homeserver configuration
+# {{ ansible_managed }}
+#
+# Docs: https://matrix-org.github.io/synapse/latest/usage/configuration/config_documentation.html
+
+## Server ##
+
+server_name: "{{ matrix_server_name }}"
+public_baseurl: "https://{{ matrix_homeserver_name }}/"
+
+pid_file: "/run/matrix-synapse.pid"
+data_dir: "{{ matrix_data_dir }}"
+
+# Signing key path relative to data_dir if not absolute
+signing_key_path: "{{ matrix_signing_key_path }}"
+
+# Trust our own identity server
+trust_root_of_server_only: true
+
+## Ports ##
+
+listeners:
+  - port: {{ synapse_http_port }}
+    type: http
+    tls: false
+    x_forwarded: true
+    bind_addresses:
+      - 127.0.0.1
+    resources:
+      - names:
+          - client
+          - federation
+        compress: false
+
+  # Manhole (disabled by default)
+{% if synapse_manhole_enabled %}
+  - port: 9000
+    type: http
+    tls: false
+    bind_addresses:
+      - 127.0.0.1
+    resources:
+      - names:
+          - manhole
+{% endif %}
+
+## Database ##
+
+database:
+  name: psycopg2
+  args:
+    user: "{{ matrix_db_user }}"
+    password: "{{ matrix_db_password }}"
+    database: "{{ matrix_db_name }}"
+    host: 127.0.0.1
+    port: 5432
+    cp_min: 5
+    cp_max: 10
+
+## Logging ##
+
+log_config: "{{ matrix_config_dir }}/log.config"
+
+## File storage ##
+
+media_store_path: "{{ matrix_data_dir }}/media"
+max_upload_size: "{{ max_upload_size }}"
+max_image_pixels: "{{ max_image_pixels }}"
+
+## Registration ##
+
+enable_registration: {{ enable_registration | lower }}
+registration_shared_secret: "{{ registration_shared_secret }}"
+
+## Federation ##
+
+# Allow federation by default
+federation_domain_whitelist: {{ federation_domain_whitelist }}
+
+## Markdown ##
+
+# Allow markdown formatting in messages
+enable_group_creation: true
+enable_3pid_lookup: false
+
+## URL previews ##
+
+url_preview_enabled: true
+url_preview_ip_range_blacklist:
+  - 127.0.0.0/8
+  - 10.0.0.0/8
+  - 172.16.0.0/12
+  - 169.254.0.0/16
+  - 192.168.0.0/16
+  - ::1/128
+  - fe80::/10
+  - fc00::/7
+
+## Retention ##
+
+{% if message_retention_enabled %}
+message_retention:
+  enabled: true
+  max_lifetime: "{{ message_retention_max_lifetime }}"
+{% endif %}
+
+## Admin ##
+
+# Must match an existing user in the form @username:server_name
+admin_user: "{{ matrix_admin_user }}"
+
+## TLS ##
+
+# TLS is handled by nginx reverse proxy
+no_tls: true
+
+## RATelimiting ##
+
+rc_messages_per_second: 0.2
+rc_message_burst_count: 10.0
+
+rc_registration:
+  per_second: 0.1
+  burst_count: 3
+
+rc_login:
+  address:
+    per_second: 0.17
+    burst_count: 5
+  account:
+    per_second: 0.17
+    burst_count: 5
+  failed_attempts:
+    per_second: 0.17
+    burst_count: 5
+
+## Experimentalsa ##
+
+# Spaces support
+experimental_features:
+  spaces_enabled: true
+
+## Server notices ##
+
+# (not configured)
+
+## Additional ##
+
+# Report homeserver usage statistics to matrix.org (disabled)
+report_stats: false
+
+## App services ##
+
+# (Add app service config files here as needed)
+app_service_config_files: []

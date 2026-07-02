@@ -1,0 +1,41 @@
+# Managed by Ansible — Synapse logging configuration
+# {{ ansible_managed }}
+
+version: 1
+
+formatters:
+  precise:
+    format: '%(asctime)s - %(name)s - %(lineno)d - %(levelname)s - %(request)s - %(message)s'
+
+filters:
+  context:
+    (): synapse.logging.context.LoggingContextFilter
+    request: ""
+
+handlers:
+  console:
+    class: logging.StreamHandler
+    formatter: precise
+    filters: [context]
+
+  file:
+    class: logging.handlers.RotatingFileHandler
+    formatter: precise
+    filename: {{ matrix_data_dir }}/homeserver.log
+    maxBytes: 104857600   # 100 MB
+    backupCount: 3
+    filters: [context]
+    encoding: utf8
+
+loggers:
+  synapse:
+    level: INFO
+    handlers: [file, console]
+    propagate: false
+
+root:
+  level: INFO
+  handlers: [file, console]
+
+log_app_service_traffic: false
+stop_on_error: false

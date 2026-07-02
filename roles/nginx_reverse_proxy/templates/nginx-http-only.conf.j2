@@ -1,0 +1,16 @@
+# Managed by Ansible — temporary HTTP-only config for certbot challenge
+# {{ ansible_managed }}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name {{ matrix_homeserver_name }};
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/letsencrypt;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}

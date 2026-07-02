@@ -1,0 +1,115 @@
+# Managed by Ansible — production Matrix Synapse reverse proxy with TLS
+# {{ ansible_managed }}
+
+# ── HTTP → HTTPS redirect ────────────────────────────────────────────────
+server {
+    listen 80;
+    listen [::]:80;
+    server_name {{ matrix_homeserver_name }};
+
+    # ACME challenge location (for renewals)
+    location /.well-known/acme-challenge/ {
+        root /var/www/letsencrypt;
+    }
+
+    # Matrix .well-known delegation (served over HTTP too)
+    location /.well-known/matrix/ {
+        root /var/www/letsencrypt;
+        add_header Access-Control-Allow-Origin *;
+    }
+
+    # Redirect everything else to HTTPS
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# ── HTTPS reverse proxy to Synapse ──────────────────────────────────────
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name {{ matrix_homeserver_name }};
+
+    # ── TLS ────────────────────────────────────────────────────────────
+    ssl_certificate /etc/letsencrypt/live/{{ matrix_homeserver_name }}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{{ matrix_homeserver_name }}/privkey.pem;
+    ssl_protocols {{ nginx_ssl_protocols }};
+    ssl_ciphers {{ nginx_ssl_ciphers }};
+    ssl_prefer_server_ciphers on;
+    ssl_session_cache {{ nginx_ssl_session_cache }};
+    ssl_session_timeout {{ nginx_ssl_session_timeout }};
+    ssl_session_tickets off;
+    ssl_dhparam /etc/nginx/dh/dhparam.pem;
+
+    # HSTS
+    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+
+    # ── Client limits ─────────────────────────────────────────────────
+    client_max_body_size {{ nginx_client_max_body_size }};
+
+    # ── .well-known delegation ────────────────────────────────────────
+    location /.well-known/matrix/ {
+        root /var/www/letsencrypt;
+        add_header Access-Control-Allow-Origin *;
+    }
+
+    # ── Matrix identity server (if running on same host) ──────────────
+    location /_matrix/identity {
+        return 404;
+    }
+
+    # ── Matrix client API ─────────────────────────────────────────────
+    location /_matrix {
+        proxy_pass http://127.0.0.1:{{ synapse_http_port }};
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_read_timeout {{ nginx_proxy_read_timeout }};
+        proxy_connect_timeout {{ nginx_proxy_connect_timeout }};
+        proxy_send_timeout {{ nginx_proxy_send_timeout }};
+    }
+
+    # ── Matrix federation (if not on port 8448 directly) ──────────────
+    location /_matrix/federation {
+        proxy_pass http://127.0.0.1:{{ synapse_http_port }};
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # ── Server health check (optional) ───────────────────────────────
+    location /health {
+        proxy_pass http://127.0.0.1:{{ synapse_http_port }}/health;
+        access_log off;
+    }
+
+    # ── Root (redirect to element web client or show a simple page) ────
+    location / {
+        return 200 'matrix server running\n';
+        add_header Content-Type text/plain;
+    }
+}
+
+# ── Matrix federation on port 8448 (optional, for direct federation) ──────
+server {
+    listen 8448 ssl http2;
+    listen [::]:8448 ssl http2;
+    server_name {{ matrix_homeserver_name }};
+
+    ssl_certificate /etc/letsencrypt/live/{{ matrix_homeserver_name }}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{{ matrix_homeserver_name }}/privkey.pem;
+    ssl_protocols {{ nginx_ssl_protocols }};
+    ssl_ciphers {{ nginx_ssl_ciphers }};
+    ssl_dhparam /etc/nginx/dh/dhparam.pem;
+
+    # Federation traffic goes to Synapse
+    location / {
+        proxy_pass http://127.0.0.1:{{ synapse_http_port }};
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout {{ nginx_proxy_read_timeout }};
+        proxy_connect_timeout {{ nginx_proxy_connect_timeout }};
+    }
+}

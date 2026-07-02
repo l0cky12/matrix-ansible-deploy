@@ -1,0 +1,25 @@
+---
+# Override variables for local container testing
+# These override group_vars/all.yml values for the test run
+
+matrix_domain: matrix.test.lan
+matrix_server_name: test.lan
+matrix_homeserver_name: matrix.test.lan
+matrix_admin_user: "@admin:test.lan"
+
+deployer_username: liam
+deployer_password_hash: "$6$rounds=656000$abcdefgh$placeholderhashfortest"
+deployer_ssh_public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAItestplaceholderkeyfortest liam@workstation"
+ssh_port: 2222
+
+matrix_db_name: synapse
+matrix_db_user: synapse
+matrix_db_password: "test_password_123"
+
+letsencrypt_email: "admin@test.lan"
+
+allowed_ssh_networks:
+  - "0.0.0.0/0"
+
+# Skip certbot in container (no DNS, no public IP)
+# The nginx role will fail at certbot step; we handle that in the test script
