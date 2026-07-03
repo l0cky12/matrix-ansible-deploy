@@ -14,7 +14,7 @@ matrix_admin_user: "@liam:didyoushitmypants.com"
 # ─── Your existing SSH public key ─────────────────────────────────────────
 # Paste the *content* of the public key you will use to log in.
 # Example: "ssh-ed25519 AAAAC3NzaC1... user@host"
-deployer_ssh_public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPLACEHOLDER replace-this-with-your-actual-key liam@workstation"
+deployer_ssh_public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC9cPEPMG5cfkkAoG+994ni2GvnPmsDayeP9aHwx8RZuDQNBld6zN7hacaRGi0KNlO6QoB/JFZ7dHmGiUsLMGM7Kobp+zQqBGzp/AO5Ui5CTjFVdeJgHpOh6dThM2zqFB4oSL4uBMEiYxWW0DZJi9G58UeaZP+hF9eIdV7Iz5r+cPFef96VGqIIr6XMK2kceSZ0hUMbwTfwyqERfe6ZOS+bAgA+BT0bETLWseUXjkKJYxZIBsoBdX4GNzeORB4NTqinmbS4+wIheU/e5CkmP+CxDQowD4JnvSP8pgEiGUuFuzMQSdV7G9XCVvC4nhk4/d0QgpKyGEUZq9bn+1yR0w/TkXNTMAr4doYwgq/01t+KKAQk6XopE2nV+/8Wy1XoadNhQtgkQTVxZyqHrALtoDJGtrcp3ZpnAdM1SK1PfwO8tOcyZ5zfaWP0RUYubDjm3AyXzszPZgX5APbvYV++T/R+GaBTAkVWntKs7XBFDOAVclSPdukwE822s1TmugwDWI8= liam@4rt1f1c141"
 
 # ── Users to keep on the system ───────────────────────────────────────────
 # The playbook creates this user, adds your SSH key, and gives passwordless sudo.

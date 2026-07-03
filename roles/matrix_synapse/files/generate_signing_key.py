@@ -41,4 +41,4 @@ def generate_signing_key():
 
 if __name__ == "__main__":
     version, key_b64 = generate_signing_key()
-    print(f"ed25519:{version} {key_b64}")
+    print(f"ed25519 {version} {key_b64}")
