@@ -69,7 +69,17 @@
   become: true
   become_user: postgres
 
-- name: Grant privileges to Synapse database user
+- name: Grant schema permissions to Synapse user
+  community.postgresql.postgresql_privs:
+    database: "{{ matrix_db_name }}"
+    roles: "{{ matrix_db_user }}"
+    objs: "public"
+    type: schema
+    privs: CREATE,USAGE
+  become: true
+  become_user: postgres
+
+- name: Grant all on existing objects
   community.postgresql.postgresql_privs:
     database: "{{ matrix_db_name }}"
     roles: "{{ matrix_db_user }}"
