@@ -1,8 +1,8 @@
 ---
 # Default variables for nginx-reverse-proxy role
 
-matrix_domain: matrix.example.com
-matrix_homeserver_name: matrix.example.com
+matrix_domain: matrix.didyoushitmypants.com
+matrix_homeserver_name: matrix.didyoushitmypants.com
 synapse_http_port: 8008
 
 # TLS settings
@@ -15,7 +15,7 @@ nginx_ssl_session_cache: "shared:SSL:10m"
 nginx_ssl_session_timeout: "1d"
 
 # Let's Encrypt email (used by the role for certbot)
-letsencrypt_email: "admin@example.com"  # CHANGE ME
+letsencrypt_email: "ldecareaux@nomma.net"
 
 # Matrix-specific nginx settings
 nginx_client_max_body_size: "50M"

@@ -30,9 +30,11 @@
     state: present
     update_cache: true
 
-- name: Install Matrix Synapse
+- name: Install Matrix Synapse and dependencies
   ansible.builtin.apt:
-    name: matrix-synapse
+    name:
+      - matrix-synapse
+      - python3-signedjson
     state: present
 
 # ── 2. Create database and user ──────────────────────────────────────────

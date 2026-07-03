@@ -1,9 +1,9 @@
 ---
 # Default variables for matrix-synapse role
 
-matrix_domain: matrix.example.com
-matrix_server_name: example.com
-matrix_admin_user: "@admin:example.com"
+matrix_domain: matrix.didyoushitmypants.com
+matrix_server_name: didyoushitmypants.com
+matrix_admin_user: "@admin:didyoushitmypants.com"
 
 # ── Database ─────────────────────────────────────────────────────────────
 matrix_db_name: synapse

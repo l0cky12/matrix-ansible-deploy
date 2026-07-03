@@ -4,12 +4,12 @@
 # ──────────────────────────────────────────────────────────────────────────
 
 # ── Identity / domain ────────────────────────────────────────────────────
-matrix_domain: matrix.example.com          # CHANGE ME — your Matrix base domain
-matrix_server_name: example.com            # CHANGE ME — the domain users see (@user:example.com)
-matrix_homeserver_name: matrix.example.com # The hostname serving the homeserver
+matrix_domain: matrix.didyoushitmypants.com
+matrix_server_name: didyoushitmypants.com
+matrix_homeserver_name: matrix.didyoushitmypants.com
 
 # ── Admin ────────────────────────────────────────────────────────────────
-matrix_admin_user: "@liam:example.com"     # CHANGE ME — your Matrix admin handle
+matrix_admin_user: "@liam:didyoushitmypants.com"
 
 # ─── Your existing SSH public key ─────────────────────────────────────────
 # Paste the *content* of the public key you will use to log in.
