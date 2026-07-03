@@ -26,8 +26,9 @@ server {
 
 # ── HTTPS reverse proxy to Synapse ──────────────────────────────────────
 server {
-    listen 443 ssl http2;
-    listen [::]:443 ssl http2;
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
     server_name {{ matrix_homeserver_name }};
 
     # ── TLS ────────────────────────────────────────────────────────────
@@ -93,8 +94,9 @@ server {
 
 # ── Matrix federation on port 8448 (optional, for direct federation) ──────
 server {
-    listen 8448 ssl http2;
-    listen [::]:8448 ssl http2;
+    listen 8448 ssl;
+    listen [::]:8448 ssl;
+    http2 on;
     server_name {{ matrix_homeserver_name }};
 
     ssl_certificate /etc/letsencrypt/live/{{ matrix_homeserver_name }}/fullchain.pem;
