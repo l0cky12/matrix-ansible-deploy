@@ -30,6 +30,13 @@
     state: present
     update_cache: true
 
+- name: Preseed server name for matrix-synapse package
+  ansible.builtin.debconf:
+    name: matrix-synapse
+    question: matrix-synapse/server-name
+    value: "{{ matrix_server_name }}"
+    vtype: string
+
 - name: Install Matrix Synapse and dependencies
   ansible.builtin.apt:
     name:
@@ -79,7 +86,16 @@
   become: true
   become_user: postgres
 
-# ── 3. Create directories ────────────────────────────────────────────────
+# ── 3. Create directories and ensure DNS resolution ──────────────────────
+- name: Ensure server_name resolves via /etc/hosts
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: "^{{ ansible_default_ipv4.address | default('127.0.0.1') }}\\s+.*\\b{{ matrix_server_name }}\\b"
+    line: "{{ ansible_default_ipv4.address | default('127.0.0.1') }} {{ matrix_server_name }} {{ matrix_domain }}"
+    owner: root
+    group: root
+    mode: "0644"
+
 - name: Create Matrix data directory
   ansible.builtin.file:
     path: "{{ matrix_data_dir }}"
