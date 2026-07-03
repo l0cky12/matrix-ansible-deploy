@@ -90,8 +90,8 @@
 - name: Ensure server_name resolves via /etc/hosts
   ansible.builtin.lineinfile:
     path: /etc/hosts
-    regexp: "^{{ ansible_default_ipv4.address | default('127.0.0.1') }}\\s+.*\\b{{ matrix_server_name }}\\b"
-    line: "{{ ansible_default_ipv4.address | default('127.0.0.1') }} {{ matrix_server_name }} {{ matrix_domain }}"
+    regexp: "^127\\.0\\.0\\.1\\s+.*\\b{{ matrix_server_name }}\\b"
+    line: "127.0.0.1 localhost {{ matrix_server_name }} {{ matrix_domain }}"
     owner: root
     group: root
     mode: "0644"
