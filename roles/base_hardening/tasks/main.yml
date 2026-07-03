@@ -77,6 +77,16 @@
     state: present
 
 # ── 4. Harden SSH daemon ──────────────────────────────────────────────────
+- name: Backup existing SSH config before modifying
+  ansible.builtin.copy:
+    src: /etc/ssh/sshd_config
+    dest: /etc/ssh/sshd_config.bak
+    owner: root
+    group: root
+    mode: "0644"
+    remote_src: true
+  failed_when: false
+
 - name: Deploy hardened sshd_config
   ansible.builtin.template:
     src: sshd_config.j2
