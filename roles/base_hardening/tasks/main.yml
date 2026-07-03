@@ -258,3 +258,12 @@
   ansible.builtin.hostname:
     name: "{{ matrix_domain }}"
   failed_when: false
+
+- name: Ensure hostname resolves via /etc/hosts
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: "^127\\.0\\.0\\.1\\s+.*\\b{{ matrix_domain }}\\b"
+    line: "127.0.0.1 {{ matrix_domain }} {{ ansible_hostname }}"
+    owner: root
+    group: root
+    mode: "0644"
