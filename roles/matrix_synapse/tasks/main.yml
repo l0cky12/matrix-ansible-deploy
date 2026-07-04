@@ -218,7 +218,7 @@
     state: started
     enabled: true
 
-# ── 8. Create initial admin user (idempotent) ─────────────────────────────
+# ── 8. Create initial admin user (idempotent, direct DB insert) ──────────
 - name: Check if admin user exists in database
   community.postgresql.postgresql_query:
     db: "{{ matrix_db_name }}"
@@ -228,12 +228,25 @@
   register: admin_user_check
   run_once: true
 
-- name: Create admin user
-  ansible.builtin.command: >
-    register_new_matrix_user -a
-    -c {{ matrix_config_dir }}/homeserver.yaml
-    -u {{ matrix_admin_user.split(':')[0].lstrip('@') }}
-    -p {{ matrix_admin_password }}
-  no_log: true
+- name: Generate admin password hash
+  ansible.builtin.set_fact:
+    admin_password_hash: "{{ matrix_admin_password | password_hash('bcrypt') }}"
+  run_once: true
   when: admin_user_check.query_result[0].cnt | int == 0
+
+- name: Create admin user via database
+  community.postgresql.postgresql_query:
+    db: "{{ matrix_db_name }}"
+    query: >
+      INSERT INTO users (name, password_hash, admin, user_type)
+      VALUES (
+        '{{ matrix_admin_user }}',
+        '{{ admin_password_hash }}',
+        true,
+        NULL
+      )
+  become: true
+  become_user: postgres
+  when: admin_user_check.query_result[0].cnt | int == 0
+  no_log: true
   run_once: true
