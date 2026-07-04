@@ -218,18 +218,13 @@
     state: started
     enabled: true
 
-# ── 8. Create initial admin user (optional, run manually) ────────────────
-- name: Print admin registration command
-  ansible.builtin.debug:
-    msg: |
-      ┌──────────────────────────────────────────────────────────────────┐
-      │ To create your first admin user after deployment, SSH in and    │
-      │ run:                                                             │
-      │                                                                  │
-      │   register_new_matrix_user -a \\
-      │     -c {{ matrix_config_dir }}/homeserver.yaml \\
-      │     https://localhost:{{ synapse_http_port }}                    │
-      │                                                                  │
-      │ You will be prompted for username and password.                 │
-      └──────────────────────────────────────────────────────────────────┘
+# ── 8. Create initial admin user ────────────────────────────────────────────
+- name: Create initial admin user
+  ansible.builtin.command: >
+    register_new_matrix_user -a
+    -c {{ matrix_config_dir }}/homeserver.yaml
+    -u {{ matrix_admin_user.split(':')[0].lstrip('@') }}
+    -p {{ matrix_admin_password }}
+  no_log: true
+  ignore_errors: true
   run_once: true
