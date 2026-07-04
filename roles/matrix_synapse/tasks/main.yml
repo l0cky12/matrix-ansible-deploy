@@ -250,3 +250,29 @@
   when: admin_user_check.query_result[0].cnt | int == 0
   no_log: true
   run_once: true
+
+# ── 9. Create bot users ────────────────────────────────────────────────────
+- name: Generate bot user password hashes
+  ansible.builtin.set_fact:
+    bot_password_hashes: "{{ matrix_bot_users | map(attribute='password') | map('password_hash', 'bcrypt') | list }}"
+  run_once: true
+
+- name: Create bot users via database
+  community.postgresql.postgresql_query:
+    login_db: "{{ matrix_db_name }}"
+    query: >
+      INSERT INTO users (name, password_hash, admin, user_type)
+      VALUES (%s, %s, %s, NULL)
+      ON CONFLICT (name) DO NOTHING
+    positional_args:
+      - "@{{ item.name }}:{{ matrix_server_name }}"
+      - "{{ bot_password_hashes[bot_idx] }}"
+      - "{{ 1 if item.admin else 0 }}"
+  become: true
+  become_user: postgres
+  loop: "{{ matrix_bot_users }}"
+  loop_control:
+    index_var: bot_idx
+    label: "@{{ item.name }}:{{ matrix_server_name }}"
+  no_log: true
+  run_once: true
