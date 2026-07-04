@@ -37,27 +37,30 @@ message_retention_max_lifetime: "1y"
 matrix_bot_users:
   - name: "elliot"
     full_name: "Elliot Alderson"
-    password: "CHANGE_ME_elliot"
     admin: false
   - name: "grace-hopper"
     full_name: "Grace Hopper"
-    password: "CHANGE_ME_grace_hopper"
     admin: false
   - name: "hermes"
     full_name: "Hermes"
-    password: "CHANGE_ME_hermes"
     admin: false
   - name: "richard-feynman"
     full_name: "Richard Feynman"
-    password: "CHANGE_ME_richard_feynman"
     admin: false
   - name: "william-shakespeare"
     full_name: "William Shakespeare"
-    password: "CHANGE_ME_william_shakespeare"
     admin: false
   - name: "plutonium1581"
     full_name: "Plutonium1581"
-    password: "CHANGE_ME_plutonium1581"
     admin: false
+
+# Bot passwords — vault-override these in group_vars/all.yml
+matrix_bot_passwords:
+  elliot: "CHANGE_ME_vault_elliot"
+  grace-hopper: "CHANGE_ME_vault_grace_hopper"
+  hermes: "CHANGE_ME_vault_hermes"
+  richard-feynman: "CHANGE_ME_vault_richard_feynman"
+  william-shakespeare: "CHANGE_ME_vault_william_shakespeare"
+  plutonium1581: "CHANGE_ME_vault_plutonium1581"
 # Debian 13 ships synapse; pin to keep updates predictable
 synapse_pkg_name: matrix-synapse

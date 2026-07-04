@@ -254,7 +254,7 @@
 # ── 9. Create bot users ────────────────────────────────────────────────────
 - name: Generate bot user password hashes
   ansible.builtin.set_fact:
-    bot_password_hashes: "{{ matrix_bot_users | map(attribute='password') | map('password_hash', 'bcrypt') | list }}"
+    bot_password_hashes: "{{ matrix_bot_users | map(attribute='name') | map('extract', matrix_bot_passwords) | map('password_hash', 'bcrypt') | list }}"
   run_once: true
 
 - name: Create bot users via database
