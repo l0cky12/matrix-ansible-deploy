@@ -218,13 +218,22 @@
     state: started
     enabled: true
 
-# ── 8. Create initial admin user ────────────────────────────────────────────
-- name: Create initial admin user
+# ── 8. Create initial admin user (idempotent) ─────────────────────────────
+- name: Check if admin user exists in database
+  community.postgresql.postgresql_query:
+    db: "{{ matrix_db_name }}"
+    query: "SELECT COUNT(*) as cnt FROM users WHERE name = '{{ matrix_admin_user }}'"
+  become: true
+  become_user: postgres
+  register: admin_user_check
+  run_once: true
+
+- name: Create admin user
   ansible.builtin.command: >
     register_new_matrix_user -a
     -c {{ matrix_config_dir }}/homeserver.yaml
     -u {{ matrix_admin_user.split(':')[0].lstrip('@') }}
     -p {{ matrix_admin_password }}
   no_log: true
-  ignore_errors: true
+  when: admin_user_check.query_result[0].cnt | int == 0
   run_once: true
