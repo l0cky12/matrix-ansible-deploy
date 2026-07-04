@@ -221,8 +221,10 @@
 # ── 8. Create initial admin user (idempotent, direct DB insert) ──────────
 - name: Check if admin user exists in database
   community.postgresql.postgresql_query:
-    db: "{{ matrix_db_name }}"
-    query: "SELECT COUNT(*) as cnt FROM users WHERE name = '{{ matrix_admin_user }}'"
+    login_db: "{{ matrix_db_name }}"
+    query: "SELECT COUNT(*) as cnt FROM users WHERE name = %s"
+    positional_args:
+      - "{{ matrix_admin_user }}"
   become: true
   become_user: postgres
   register: admin_user_check
@@ -236,15 +238,13 @@
 
 - name: Create admin user via database
   community.postgresql.postgresql_query:
-    db: "{{ matrix_db_name }}"
+    login_db: "{{ matrix_db_name }}"
     query: >
       INSERT INTO users (name, password_hash, admin, user_type)
-      VALUES (
-        '{{ matrix_admin_user }}',
-        '{{ admin_password_hash }}',
-        true,
-        NULL
-      )
+      VALUES (%s, %s, 1, NULL)
+    positional_args:
+      - "{{ matrix_admin_user }}"
+      - "{{ admin_password_hash }}"
   become: true
   become_user: postgres
   when: admin_user_check.query_result[0].cnt | int == 0
