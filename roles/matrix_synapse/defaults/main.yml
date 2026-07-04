@@ -34,33 +34,8 @@ message_retention_enabled: false
 message_retention_max_lifetime: "1y"
 
 # ── Bot users for Matrix ────────────────────────────────────────────────
-matrix_bot_users:
-  - name: "elliot"
-    full_name: "Elliot Alderson"
-    admin: false
-  - name: "grace-hopper"
-    full_name: "Grace Hopper"
-    admin: false
-  - name: "hermes"
-    full_name: "Hermes"
-    admin: false
-  - name: "richard-feynman"
-    full_name: "Richard Feynman"
-    admin: false
-  - name: "william-shakespeare"
-    full_name: "William Shakespeare"
-    admin: false
-  - name: "plutonium1581"
-    full_name: "Plutonium1581"
-    admin: false
-
-# Bot passwords — vault-override these in group_vars/all.yml
-matrix_bot_passwords:
-  elliot: "CHANGE_ME_vault_elliot"
-  grace-hopper: "CHANGE_ME_vault_grace_hopper"
-  hermes: "CHANGE_ME_vault_hermes"
-  richard-feynman: "CHANGE_ME_vault_richard_feynman"
-  william-shakespeare: "CHANGE_ME_vault_william_shakespeare"
-  plutonium1581: "CHANGE_ME_vault_plutonium1581"
+# Override these in group_vars/all.yml to add bot accounts
+matrix_bot_users: []
+matrix_bot_passwords: {}
 # Debian 13 ships synapse; pin to keep updates predictable
 synapse_pkg_name: matrix-synapse

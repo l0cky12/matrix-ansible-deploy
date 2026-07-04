@@ -49,30 +49,4 @@ message_retention_max_lifetime: "1y"
 synapse_pkg_name: matrix-synapse
 
 # ── Bot users ────────────────────────────────────────────────────────────
-matrix_bot_users:
-  - name: "elliot"
-    full_name: "Elliot Alderson"
-    admin: false
-  - name: "grace-hopper"
-    full_name: "Grace Hopper"
-    admin: false
-  - name: "hermes"
-    full_name: "Hermes"
-    admin: false
-  - name: "richard-feynman"
-    full_name: "Richard Feynman"
-    admin: false
-  - name: "william-shakespeare"
-    full_name: "William Shakespeare"
-    admin: false
-  - name: "plutonium1581"
-    full_name: "Plutonium1581"
-    admin: false
-
-matrix_bot_passwords:
-  elliot: "CHANGE_ME_bot_elliot"
-  grace-hopper: "CHANGE_ME_bot_grace_hopper"
-  hermes: "CHANGE_ME_bot_hermes"
-  richard-feynman: "CHANGE_ME_bot_richard_feynman"
-  william-shakespeare: "CHANGE_ME_bot_william_shakespeare"
-  plutonium1581: "CHANGE_ME_bot_plutonium1581"
+# (none defined yet — add bot accounts here as needed)
